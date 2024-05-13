@@ -1,0 +1,531 @@
+SQL BASICS ===============================
+
+INTRO TO DATABASES
+
+RDBMS: Relational DataBase Management Systems
+
+Referring to the software application that manages databases for us.
+
+The RDBMS is a software application that you run that your programs can connect to that they can store, modify, and retrieve data from a relational database. The RDBMS that you will use is called SQLite3.
+
+Software developers will often use the term "database" to refer to the RDBMS. They will also say that "the data is in SQLite" or "the data is in Oracle" which is ambiguous because those are the names of the RDBMSes, not a database where the data is stored. That'd be like asking someone their address and them replying "Chicago"
+
+What is SQLite?
+
+SQLite is software. 
+- It is an open-source, relational database management system. Most RDBMS rely on a client-server relationship where the RDBMS is the server and your server is the client that makes requests to the database server. 
+- SQLite is different in that it is an embedded RDBMS that manages its data in a system's local file instead of a standalone service. It stores data in locally stored files instead of having to interact with a database server.
+
+SQLite is one of if not the most popular SQL database management systems, used mainly for its simplicity and efficiency. You will install and connect SQLite to an application of your own in a later lesson.
+
+There are many other implementations of SQL, such as PostgreSQL and MySQL. The tools and techniques you learn with SQLite will work for those, with minor changes to account for slightly different implementations.
+
+SUMMARY:
+
+- Relational database management system is software that manages collections of structured data called databases.
+- SQLite is one of many relational database management systems.
+- Database is a collection of structured data that an RDBMS manages for you. 
+- Structured Query Language (SQL) is a programming language that allows you to define the relational structure of the database and interact with the data in it.
+
+
+DATABASE TABLE SCHEMAS =======================
+
+COLUMN TYPES
+- Choosing appropriate column types for your datasets will allow SQL to more efficiently store your data.
+
+NUMERIC TYPES ----
+ANSI SQL supports the following numeric types:
+
+INTEGER - a number without a decimal.
+
+DECIMAL - a number with a decimal,floating-point number.
+
+BIGINT - will hold values between -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807
+
+Another way you can use the DECIMAL type is to give it two arguments. The first number is the total number of digits that a number can have in that column. The second number is the number of digits after the decimal point that you want to track. The specification DECIMAL(4, 2) will hold the number 23.22, but not the numbers 123.22 (too many total digits) or 23.222 (which it will just ignore the extra decimal places and store 23.22). These exact numbers are important for things like storing values of money, where rounding errors could cause significant errors in calculations.
+
+
+STRING TYPES ----
+
+VARCHAR -  it can contain text of varying lengths up to a specified maximum.
+
+VARCHAR(50) - hold up to 50 characters
+
+TEXT - unlimited characters but slower
+
+
+BOOLEAN TYPES ----
+When you need to store a true or false
+
+
+COLUMN TYPES IN SQLITE
+Most SQL Databases use static, rigid data types for the columns. However, SQLite uses a more general, dynamic system. This means there are fewer types to worry about in your table definitions.
+
+INTEGER - A number without decimals
+REAL - A number with decimals (floating-point)
+TEXT - A string
+BLOB - Data stored exactly as it was input (good for images, really long text, and other big "blobs" of stuff)
+NUMERIC - Special case for numbers which auto-converts between the other types, depending on the value
+
+Fortunately, SQLite can understand the more rigid types, and it will "translate" to the corresponding SQLite column type.
+
+SQLite will convert the BOOLEAN type to NUMERIC.
+
+- false as 0 (zero)
+- true as 1 (one)
+
+
+COLUMN CONSTRAINTS
+
+These are conditions that must be met by each entry in the column.
+ Example: VARCHAR(50) type column is given the constraint of being a string type of no more than 50 characters. However, these aren't the only constraints you can place on columns.
+
+NULL and NOT NULL ----
+NULL is a possible value in a column that represents an empty column value. If you do not want to have any NULL values in a column, you could specify the column to be NOT NULL when defining it.
+
+DEFAULT ----
+If you want the column to have a default value when no value is given on insertion, use the DEFAULT constraint. You can define a default value for the column if no value exists for the column of an entity you're trying to insert into the table.
+
+PRIMARY KEY ----
+Is a column that contains unique identifiers for each entity in the table. For example, a Social Security Number is unique to a single person and could potentially be used as a primary key on a table that stores data of US citizens.
+
+Often, primary keys are integers (INTEGER PRIMARY KEY) because
+
+1. There is not another column that must have a unique value
+2. An integer primary key optimizes your SQL database for the fastest performance when retrieving data by the identifying column
+
+AUTOINCREMENT ----
+- Causes the default value to be the next integer in the series. So if the last entry has a value of 1234, the next entry that gets inserted will have a value of 1235 for the column with the AUTOINCREMENT constraint.
+
+TIP: 
+AUTOINCREMENT is commonly used in a primary key column, e.g. INTEGER PRIMARY KEY AUTOINCREMENT.
+
+
+STEPS TO DESIGNING A DATABASE
+
+When designing your own database schemas, consider these factors in order. Start with what tables you will need, the columns within each table, and the types of each column. Remember to include a primary key column in each table.
+
+
+Entity Relationship Diagram
+Free Database Diagram (ERD) Design Tools:
+
+- dbdiagram.io
+- drawsql.app
+- Lucidchart
+- draw.io
+- QuickDBD
+
+DB DIAGRAM SAMPLE CODE
+
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table follows {
+  following_user_id integer
+  followed_user_id integer
+  created_at timestamp 
+}
+
+Table users {
+  id integer [primary key]
+  username varchar
+  role varchar
+  created_at timestamp
+}
+
+Table posts {
+  id integer [primary key]
+  title varchar
+  body text [note: 'Content of the post']
+  user_id integer
+  status varchar
+  created_at timestamp
+}
+
+Ref: posts.user_id > users.id // many-to-one
+
+Ref: users.id < follows.following_user_id
+
+Ref: users.id < follows.followed_user_id
+
+
+INTRO TO RELATIONSHIPS IN DATABASES
+
+Previously, you created relational database tables and accessed data from these tables through SQL queries. These tables (a.k.a. entities) contain rows (a.k.a. records) and columns (a.k.a. fields). You also learned how to uniquely identify table records by adding a PRIMARY KEY.
+
+What is a FOREIGN KEY?
+To relate one table to another, a FOREIGN KEY column is included which is associated with - or references the PRIMARY KEY in another table.
+
+By convention, the name of a FOREIGN KEY is made by combining the singular form of the external, or foreign, table with the name of the primary key in that foreign table.
+
+users table:
+id - primary key
+username
+password
+
+jobs table:
+id - primary key
+job_title
+start_date
+end_date
+user_id - foreign key
+
+ONE TO ONE OVERVIEW ----
+The simplest relationship is one-to-one. This means one row in table A references one and only one row in table B. While it is not a common use of relationships, it can be quite useful for separating data based on its responsibilities. For example, a user's preferences like language or color mode could be stored separately from the login credentials.
+
+users table:
+id - primary key
+username
+password
+
+preferences table:
+user_id - foreign key & primary key
+language
+color_mode
+
+PRIMARY KEY for the preferences table is also the FOREIGN KEY referencing the users table's PRIMARY KEY.
+
+ONE TO MANY OVERVIEW ----
+The one-to-many relationship is where each row in one table can be referenced one time by any number of rows in another table.
+
+For example, "Each person has many jobs" is the one-to-many relationship shown in the people and jobs tables above.
+
+MANY TO MANY OVERVIEW ----
+The many-to-many relationship is where each row in one table can be referenced by many rows in another table, and vice versa.
+
+For example, consider people reading books.
+
+- Each person can read multiple books.
+- Each book can be read by multiple people.
+
+
+ONE TO MANY RELATIONSHIPS
+
+Scenario:
+Each juice box is assigned to one student. Another way to say this is "each juice box is owned by one student", or "each student can have many juice boxes
+
+Schema and schema diagram:
+It can be very helpful to write down the representation of a database to specify the way it is structured. This structure is called the schema.
+
+Schema for students table:
+Column		Type		Constraints
+id		integer		Primary Key
+name		text
+
+Schema for juices_boxes table:
+Column		Type		Constraints
+id		integer		Primary Key
+juice		text
+date		text
+student_id	integer		Foreign Key
+				References
+				students(id)
+
+
+The visual representation of the schema is called the schema diagram. Many diagramming tools like dbdiagram.io will label the connection line with a 1 and a * to represent the one-to-many relationship (as shown above).
+
+
+SQL commands
+The following code shows how to create these tables with the one-to-many relationship in SQLite3.
+
+CREATE TABLE students (
+  id INTEGER PRIMARY KEY,
+  name TEXT
+);
+
+CREATE TABLE juice_boxes (
+  id INTEGER PRIMARY KEY,
+  juice TEXT,
+  date TEXT,
+  student_id INTEGER,
+  FOREIGN KEY (student_id) REFERENCES students(id)
+);
+
+
+MANY TO MANY RELATIONSHIPS
+one-a-to-many-b + one-b-to-many-a = many-a-to-many-b
+
+Scenario:
+Consider students attending elementary school. Each student will study more than one subject. Also, each subject will be studied by more than one student.
+
+One student => Many subjects
+One subject => Many students
+
+
+When combined, this means many students are related to many subjects, a.k.a. a many-to-many relationship between students and subjects.
+
+The way to connect two tables in a many-to-many relationship is using a third table called a join table. This special kind of table stores a foreign key for the primary key from each of the tables that need to be connected.
+
+In this scenario, a join table connecting the students and subjects to create a many-to-many relationship needs to hold the primary keys of the students and subjects tables as foreign keys. It is not necessary for the join table to have its own primary key in this case because it's only purpose is to act as a connecting table.
+
+SAMPLE DATA
+
+students table:
+id		name
+1		Alim
+2		Andrei
+3		Belma
+
+subjects table:
+101		Reading
+102		Writing
+103		Arithmetic
+104		Art
+105		Music
+
+student_subject table:
+1		101
+1		102
+1		103
+1		104
+2		101
+2		102
+2		103
+2		105
+3		101
+3		102
+3		103
+3		104
+
+Many times the data provided by the business team will look just like this:
+
+STUDENT ID	STUDENT NAME	SUBJECT ID	SUBJECT NAME
+1		Alim		101		Reading
+1		Alim		102		Writing
+1		Alim		103		Arithmetic
+1		Alim		104		Art
+2		Andrei		101		Reading
+2		Andrei		102		Writing
+2		Andrei		103		Arithmetic
+2		Andrei		105		Music
+3		Belma		101		Reading
+3		Belma		102		Writing
+3		Belma		103		Arithmetic
+3		Belma		104		Art
+
+Schema and schema diagram
+Writing out the schema before building a database is a useful exercise.
+
+Schema for the abbreviated students and subjects tables in this example:
+
+column		type		constraints
+id		integer		primary key
+name		text	
+
+
+Schema for student-subject join table:
+column		type		constraints
+student_id	integer		Foreign key
+				References
+				students(id)
+subject_id	integer		Foreign key
+				References
+				subjects(id)
+
+Represented visually in a schema diagram a many-to-many relationship can be easy to spot because the join table sits between two connector lines.
+
+When the two connector lines are labelled with 1 and * on opposite ends, this leads to * to * - meaning "many" to "many" - between the two entity tables.
+
+
+SQL commands
+The following code shows how to create these tables with the many-to-many relationship in SQLite3.
+
+CREATE TABLE students (
+  id INTEGER PRIMARY KEY,
+  name TEXT
+);
+
+CREATE TABLE subjects (
+  id INTEGER PRIMARY KEY,
+  name TEXT
+);
+
+CREATE TABLE student_subject (
+  student_id INTEGER,
+  subject_id INTEGER,
+  FOREIGN KEY (student_id) REFERENCES students(id)
+  FOREIGN KEY (subject_id) REFERENCES subjects(id)
+);
+
+CREATE TABLE console_game (
+  console_id INTEGER,
+  game_id INTEGER,
+  FOREIGN KEY (console_id) REFERENCES consoles(id)
+  FOREIGN KEY (game_id) REFERENCES games(id)
+)
+
+Many-to-Many Database Design
+
+A join table table is a table that sits between the other tables in a many-to-many relationship. It stores a record of each of the foreign keys of the other tables. Which is used to reference the data from the other tables. Overall, a join table provides a more developed data structure.
+
+The above schema depicts a many-to-many relationship between the products table and the orders table. A single order can have multiple products, and a single product can belong to multiple orders. We created a third join table called order_details, which contains both the order_id and product_id fields as foreign keys. The foreign keys in the order_details table (product_id and order_id) reference the primary keys in the products table (id) and the orders table (id). This allows your database to make multiple connections between seperate data tables.
+
+This table relationship would produce the following example data(note that not all columns are shown below):
+
+Products:
+ID		NAME
+1597		Glass Coffee Mug
+1598		Metallic Coffee Mug
+1599		Smart Coffee Mug
+
+Users:
+ID		NAME
+1		Alice
+2		Bob
+
+Orders:
+ID		PURCHASER_ID
+10		1
+11		1
+12		2
+
+Order Details:
+ID		ORDER_ID		PRODUCT_ID
+1		10			1599
+2		11			1597
+3		11			1598
+4		12			1597
+5		12			1598
+6		12			1599
+
+Using the foreign keys, you should be able to reason out that "Alice" has two orders. One order containing a "Smart Coffee Mug" and another order containing both a "Glass Coffee Mug" and "Metallic Coffee Mug". Bob had one order containing three items, one of each mug
+
+- Don't forget the fourth stage in RDD, to apply normalization rules to your tables to optimize the database structure reducing redundancy and confusion.
+
+
+RELATIONAL DATABASE DESIGN STAGES
+tables - entities
+rows - records
+columns - fields
+
+Stages of Relational Database Design
+
+1. Define the purpose/entities of the relational DB.
+2. Identify primary keys.
+3. Establish table relationships.
+4. Apply normalization rules.
+
+
+Define database purpose and entities --
+- Why is the database being created? What problem is it solving? What is the data used for?
+- If you were creating a database for order processing on an e-commerce application, you would need a database with at least three tables: a products table, an orders tables, and a users (i.e. customers) table. You can reason that a product will probably have an ID, name, and price, and an order will contain one or more product IDs. Also, each user can place multiple orders.
+
+Identify primary keys --
+- For our above example of online orders, we would probably create IDs to serve as the primary key for each table: a product ID, an order ID, and a user ID.
+
+Establish table relationships -- 
+- One-to-one
+- One-to-many
+- Many-to-many
+
+
+One-to-many relationship
+In a one-to-many relationship, each record in Table A is associated with multiple records in Table B. Each record in Table B is associated with only one record in Table A. This is achieved by utilizing the primary key and foreign key. The foreign key in Table B references the primary key of Table A.	
+
+One user can create multiple orders.
+
+The primary key of the users table (id) is a foreign key in the orders table (purchaser_id). This allows the foreign key (purchaser_id) in the orders table to reference the users table (id) to identify which user made each order.
+
+
+Apply normalization rules --
+- Normalization is the process of optimizing the database structure so that redundancy and confusion are eliminated.
+
+The rules of normalization are called “normal forms” and are as follows:
+
+1. First normal form
+2. Second normal form
+3. Third normal form
+4. Boyce-Codd normal form
+5. Fifth normal form
+
+The first three forms are widely used in practice, while the fourth and fifth are less often used.
+
+First normal form rules: ------------------
+- Eliminate repeating groups in individual tables.
+- Create a separate table for each set of related data.
+- Identify each set of related data with a primary key.
+
+
+Second normal form rules:-----------------
+- Create separate tables for sets of values that apply to multiple records.
+- Relate these tables with a foreign key.
+
+
+Third normal form rules:------------------
+- Eliminate fields that do not depend on the table’s key.
+
+https://learn.microsoft.com/en-us/office/troubleshoot/access/database-normalization-description
+
+
+Visualizing Relational Database Schemas
+
+people table:
+SSN		FIRST_NAME	LAST_NAME
+123-45-6789	John		Doe
+987-65-4329	Jane		Doe
+987-65-4320	John		Smith
+
+cats table:
+OWNER_SSN	ID		NAME
+123-45-6789	1		Callie
+123-45-6789	2		Charley
+987-65-4320	3		Jaxson
+
+fur table:
+ID		NAME
+1		brown
+2		white
+3		grey
+
+cats_fur table:
+CAT_ID		FUR_ID
+1		1
+1		2
+2		2
+2		3
+3		1
+
+one-to-many type relationship
+This refers to scenarios where one entity is associated with multiple entities in another table. Using the people/cats table examples above, you can see that John is the owner of both Callie and Charley, but Callie has only one owner, John.
+
+many-to-many relationships
+Consider the color of fur for the cats - each cat can have multiple colors, and each color can appear on multiple cats. This is a scenario where one entity is associated with multiple entities in another table in BOTH DIRECTIONS. The typical solution to is to place a join table "between" the entity tables.
+
+
+Using the cats/cats_fur/fur tables, you can see Callie is brown and white, Charley is white and grey, and Jaxson is just plain brown.
+
+NORMALIZATION
+
+- is the process of removing potential anomalies from the database design.
+
+Insertion anomalies - not enough field
+Update anomalies - update causes duplication
+Deletion anomalies - removing a data forever
+
+
+DATABASE CONNECTIONS
+
+A database is a place where data is stored, but data should not always be publicly accessible. Only with the proper authorization should someone be able to enter a database to retrieve or manipulate the data within.
+
+Restricting Access with Username/Password Credentials
+- Many RDBMS's use a username and password combination as a means to restrict access to a database. The RDBMS can support multiple different user roles (e.g. Read Access Only, Read and Write Access, etc.), so having credentials will verify what actions a user can perform on a database.
+
+Access via URL Connection
+A database is a server; you make requests to it and receive responses from it. Much like connecting to a server, you can also make requests to a database via a URL. The URL connection string could look something like this:
+
+jdbc:postgresql://localhost/test?user=fred&password=secret&ssl=true
+
+Note that in the above example, the username and password are embedded into the connection string. It is also possible to exclude the username and password and authorize a connection based on the origin of the request, namely an IP address.
+
+DB as a Service
+Some applications opt to use cloud databases to host their data using third-party vendors instead of creating their own database server. This is because security, role management, reliability, uptime, etc. make managing a database complex; vendors provide convenient tools, making your job of maintaining a database easier. You can connect to these kinds of databases using a URL connection string.
+
+Definitely consider using a database as a service for any projects you may have.
+
+SQLite3: The Exception
+SQLite3 is unique as an RDBMS in that it stores its data in a file instead of behind a database server. This means that anyone that has access to the file has access to the contents of the database, which includes reading and writing. For this reason, SQLite3 should only be used in a testing environment and NOT a production environment.
+
+The file extension of the database file is conventionally .db. For example, an application that stores cute cats' information can have a SQLite3 database file called cats.db.
+
+Transient in-memory database
+Instead of storing the contents of the database in a file, SQLite3 will keep track of the database contents in memory if no file to use is specified. The database can be interacted with in the same way as if it was being written to a file, but its contents will be permanently lost as soon as the instance is exited out of in the terminal.
