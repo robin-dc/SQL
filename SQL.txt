@@ -529,3 +529,330 @@ The file extension of the database file is conventionally .db. For example, an a
 
 Transient in-memory database
 Instead of storing the contents of the database in a file, SQLite3 will keep track of the database contents in memory if no file to use is specified. The database can be interacted with in the same way as if it was being written to a file, but its contents will be permanently lost as soon as the instance is exited out of in the terminal.
+
+SIMPLE SQL LITE COMMANDS
+cd folder
+> sqlite3
+> .open example.db
+> .read example.sql
+> .tables
+> .schema
+> SELECT * FROM samples;
+> .headers on - show the names of each of the columns in the rows of the query result.
+> SELECT * FROM samples;
+> ctrl+z
+
+- Insert it into a database
+.read create-table.sql
+
+- To verify that the table has been properly created and populated
+SELECT * FROM pies;
+
+- See the pies schema
+.schema
+
+If you wanted to reset your database using this file, you may end up duplicating the data if you simply ran .read create-table.sql again. For this reason, it would be best to add this line at the beginning of create-table.sql:
+DROP TABLE pies;
+
+If the pies table exists, it will be dropped first before recreating it. This way, your table doesn't contain duplicate data. If the table doesn't already exist, SQLite3 will throw an error, but will still run the remaining SQL, so your table will be created regardless.
+
+
+Why would a .sql file be beneficial to use?
+Using a .sql file allows for database setup and test or seed data to be created very easily. Saving the SQL to a file has similar benefits as saving JavaScript to a .js file versus typing out and running the code directly in Node.
+
+
+SQL and Express ========================================
+
+Begin with Express boilerplate
+npm install express dotenv nodemon
+Require package and instantiate database
+npm install sqlite3
+
+// Instantiate SQLite and database
+const sqlite3 = require('sqlite3');
+const db = new sqlite3.Database(
+    process.env.data_source,
+    sqlite3.OPEN_READWRITE
+);
+Tip: Using a constant for the database name, if used, should only be a temporary part of the code.
+
+sqlite3.OPEN_READWRITE 
+- means that the Express server can read and write to the database (that is, SELECT, INSERT, UPDATE, and DELETE). However, it will NOT be able to CREATE or DROP tables.
+
+Query for all records ----
+app.get('/trees', (req, res, next) => {
+    const sql = 'SELECT id, name FROM trees';
+    const params = [];
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            next(err);
+        } else {
+            res.json(rows);
+        }
+    });
+});
+
+- first argument in any of the database callback functions is err which holds the error
+- second parameter is the result of the function call.
+
+db.all(), the result is an array of rows.
+
+
+Query to get 1 row ----
+app.get('/trees/:id', (req, res, next) => {
+   const sql = 'SELECT * FROM trees WHERE id = ?';
+   const params = [req.params.id];
+
+    db.get(sql, params, (err, row) => {
+        if (err) {
+          next(err);
+        } else {
+          res.json(row);
+        }
+    });
+});
+
+question mark (?) in the SQL statement is where a dynamic value needs to go.
+
+
+Using run on non-SELECT SQL statements ----
+
+Running other SQL statements, like INSERT, DELETE and UPDATE follow a similar pattern:
+
+- Constant for the SQL statement, with ? where dynamic values need to go
+- Constant array for the params to substitute for each ? in the same order as the ?'s in the SQL constant
+- Calling the appropriate database function with the SQL statement, params, and result handler function
+
+app.post('/trees', (req, res, next) => {
+    // SQL INSERT
+    const sql = `
+        INSERT INTO trees (tree, location, height_ft, ground_circumference_ft)
+        VALUES (?, ?, ?, ?);
+    `;
+    const params = [
+        req.body.name,
+        req.body.location,
+        req.body.height,
+        req.body.size
+    ];
+
+    // SQL QUERY NEW ROW
+    const sqlLast = 'SELECT * FROM trees ORDER BY id DESC LIMIT 1';
+
+    // Call database to INSERT and, if successful, return new row
+    db.run(sql, params, (err) => {
+        if (err) {
+            next(err);
+        } else {
+            db.get(sqlLast, [], (err, row) => {
+                res.json(row);
+            });
+        }
+    });
+});
+
+Best Practices
+- It is useful to return the row that was added, removed or changed (instead of the generic success message shown above).
+
+
+CREATE/DROP Tables ========================
+
+Naming a table
+- snake_case
+- plural form of the data that it holds
+
+Good table names
+- student_grades
+- office_locations
+- people
+
+Bad (incorrect) table names
+- Student Grades
+- office-locations
+- person
+
+
+Writing the SQL
+- it uses parentheses, not curly braces
+-  the last column specification cannot have a comma after it
+
+EXAMPLE:
+COLUMN		JS DATA TYPE	MAX LENGTH		ANSI SQL DATA TYPE
+id		integer					INTEGER PRIMARY KEY
+name		string		50			VARCHAR(50)
+age_yrs		number		3 digits, 1 decimal	NUMERIC(3,1)
+breed		string		100			VARCHAR(100)
+weight_lbs	number					INTEGER
+microchipped	Boolean					BOOLEAN
+
+CREATE TABLE puppies (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  age_yrs NUMERIC(3,1),
+  breed VARCHAR(100),
+  weight_lbs INTEGER,
+  microchipped BOOLEAN
+);
+
+Dropping a table
+DROP TABLE puppies;
+
+- Note that dropping tables is a dangerous operation as it deletes all the data in the table with it.
+
+Allow a DROP TABLE command to be called without error at a time when a table does not exist
+> DROP TABLE IF EXISTS puppies;
+
+
+INSERT Data
+
+Table schema
+CREATE TABLE friends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL
+);
+
+
+Inserting data into the example table
+INSERT INTO friends (first_name, last_name)
+VALUES
+  ('Amy', 'Pond');
+
+- Note the use of single quotation marks for string values. Also note that, with the AUTOINCREMENT constraint on id you don't need to specify the value when inserting
+
+Multiple values insert
+INSERT INTO friends (first_name, last_name)
+VALUES
+  ('Rose', 'Tyler'),
+  ('Martha', 'Jones'),
+  ('Donna', 'Noble'),
+  ('River', 'Song');
+
+Use SELECT * FROM friends; to verify that there are rows in the friends table
+
+- You may get an error when inserting duplicate data into a column with a UNIQUE constraint.
+INSERT INTO friends (id, first_name, last_name)
+VALUES (5, 'Jenny', 'Who');
+
+Because id is a primary key and that id is already taken, you should get a message in SQLite that it already exists:
+
+Error: UNIQUE constraint failed: friends.id
+
+
+SELECT Data ==============================
+What is a query?
+- A query is simply a question you're asking a database, and you're aiming to get a response back. The response comes back to you as a list of table rows.
+
+The syntax for the SELECT query is SELECT [columns] FROM [table];
+
+EXAMPLE
+create the puppies table, and insert the rows using the following:
+
+CREATE TABLE puppies (
+  id INTEGER,
+  name VARCHAR(100),
+  age_yrs DECIMAL(2,1),
+  breed VARCHAR(100),
+  weight_lbs INT,
+  microchipped BOOLEAN
+);
+
+INSERT INTO puppies 
+VALUES 
+  (1, 'Cooper', 1, 'Miniature Schnauzer', 18, 1),
+  (2, 'Indie', 0.5, 'Yorkshire Terrier', 13, 1),
+  (3, 'Kota', 0.7, 'Australian Shepherd', 26, 0),
+  (4, 'Zoe', 0.8, 'Korean Jindo', 32, 1),
+  (5, 'Charley', 1.5, 'Basset Hound', 25, 0),
+  (6, 'Ladybird', 0.6, 'Labradoodle', 20, 1),
+  (7, 'Callie', 0.9, 'Corgi', 16, 0),
+  (8, 'Jaxson', 0.4, 'Beagle', 19, 1),
+  (9, 'Leinni', 1, 'Miniature Schnauzer', 25, 1),
+  (10, 'Max', 1.6, 'German Shepherd', 65, 0);
+
+Note that in SQLite, the BOOLEAN datatype is represented as 1s and 0s for TRUE and FALSE respectively.
+
+SELECT SPECIFIC COLUMNS ----
+SELECT name, age_yrs, weight_lbs FROM puppies;
+
+SELECT ALL COLUMNS ----
+SELECT * FROM puppies;
+
+SELECT WITH THE WHERE CLAUSE;
+Just using the SELECT query by itself will return every row in the table, but if you want to only select rows that satisfy a certain condition, the WHERE clause can filter your results. Clauses in SQL are parts of a query that can filter or manipulate how you want your rows returned to you.
+
+WHERE clause for a single value
+SELECT * FROM puppies WHERE id = 5;
+
+Note that string values MUST use single quotation marks.
+
+
+PRACTICE SELECT DATA ===============
+
+sqlite3 practice.db
+.read seed-data.sql
+SELECT * FROM puppies;
+SELECT name, age_yrs, weight_lbs FROM puppies;
+SELECT name, age_yrs, weight_lbs FROM puppies WHERE id = 5;
+SELECT name, age_yrs, weight_lbs FROM puppies WHERE microchipped = true;
+SELECT name, age_yrs, weight_lbs FROM puppies WHERE weight_lbs > 25;
+SELECT name, age_yrs, weight_lbs FROM puppies WHERE weight_lbs > 25 AND microchipped = true;
+
+Tip: 
+- On numeric columns (INTEGER and REAL), SQL uses comparison operators similar to JavaScript (e.g. >, >=, <, <=).
+- Like JavaScript, SQL has a way to combine conditionals using logical statements such as AND, OR and NOT.
+
+
+DELETE Data ----
+
+DELETE FROM [table] WHERE [condition];
+
+If you omit the WHERE, then all rows from your table will be deleted. This is different from dropping the table because the table still exists, but there just aren't any rows in it. Similar to dropping tables, DELETE statements should also be used judiciously in production to avoid deleting data by accident.
+DELETE FROM puppies WHERE microchipped = 0;
+SELECT * FROM puppies;
+
+
+UPDATE Data ----
+
+CREATE TABLE friends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO friends (first_name, last_name)
+VALUES
+('Amy', 'Pond'),
+('Rose', 'Tyler'),
+('Martha', 'Jones'),
+('Donna', 'Noble'),
+('River', 'Song');
+
+Updating a row in a database table
+In order to update data in a database, you'll need to specify:
+
+- The table to UPDATE
+- Which column to SET with the new value to set it too
+- WHERE to find the row to update.
+
+UPDATE friends
+SET last_name = 'Blue'
+WHERE first_name = 'Amy' AND last_name = 'Pond';
+
+SELECT * FROM friends;
+
+Silent failures
+If no rows match the WHERE statement, the UPDATE will fail silently. This means there is no error message, and the table is unchanged.
+
+Tip: 
+Query the table using SELECT to make sure you have the proper WHERE clause before using it in an UPDATE statement.
+
+UPDATE errors
+For example, if you try to modify a column with a UNIQUE constraint.
+# BAD - DO NOT DO THIS!
+UPDATE friends
+SET id = 2
+WHERE id = 1;
+
+Error: UNIQUE constraint failed: friends.id
